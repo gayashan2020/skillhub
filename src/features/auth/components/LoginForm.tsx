@@ -1,121 +1,158 @@
-import { useState } from "react";
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/router";
 
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { useState } from "react";
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().optional(), // Only required for signup
+});
+
 export default function LoginForm() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
   const [isSignup, setIsSignup] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const router = useRouter();
 
-  const handleLogin = async () => {
-    setIsLoading(true);
-    setError("");
+  // Initialize React Hook Form with Zod validation
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      name: "",
+    },
+  });
 
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
+  // Form submission handler for Login or Signup
+  const onSubmit = async (data: z.infer<typeof loginSchema>) => {
+    if (isSignup) {
+      try {
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
 
-      if (!result || result.error) {
-        throw new Error("Invalid email or password");
-      }
-
-      router.push("/dashboard");
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred during login.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignup = async () => {
-    setIsLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        if (Array.isArray(data.error)) {
-          throw new Error(data.error.join(", "));
-        } else {
-          throw new Error(data.error || "Sign up failed");
+        const result = await response.json();
+        if (!response.ok) {
+          if (Array.isArray(result.error)) {
+            throw new Error(result.error.join(", "));
+          } else {
+            throw new Error(result.error || "Sign up failed");
+          }
         }
-      }
 
-      await handleLogin();
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred during signup.");
+        // Automatically log the user in after successful signup
+        await signIn("credentials", {
+          email: data.email,
+          password: data.password,
+          redirect: false,
+        });
+        router.push("/dashboard");
+      } catch (err) {
+        form.setError("email", {
+          type: "manual",
+          message: (err as Error).message,
+        });
       }
-    } finally {
-      setIsLoading(false);
+    } else {
+      // Login logic
+      try {
+        const result = await signIn("credentials", {
+          email: data.email,
+          password: data.password,
+          redirect: false,
+        });
+
+        if (!result || result.error) {
+          throw new Error("Invalid email or password");
+        }
+
+        router.push("/dashboard");
+      } catch (err) {
+        form.setError("email", {
+          type: "manual",
+          message: (err as Error).message,
+        });
+      }
     }
   };
-
 
   return (
     <div className="max-w-md mx-auto p-6 border rounded shadow-lg">
       <h2 className="text-2xl font-bold mb-4 text-center">
         {isSignup ? "Sign Up" : "Login"}
       </h2>
-      {isSignup && (
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="border p-2 w-full my-2"
-          required
-        />
-      )}
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="border p-2 w-full my-2"
-        required
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="border p-2 w-full my-2"
-        minLength={6}
-        required
-      />
-      {error && <p className="text-red-500">{error}</p>}
-      <button
-        onClick={isSignup ? handleSignup : handleLogin}
-        disabled={isLoading}
-        className="bg-blue-500 text-white p-2 rounded w-full my-2"
-      >
-        {isLoading ? "Loading..." : isSignup ? "Sign Up" : "Login"}
-      </button>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {isSignup && (
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="Your email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Your password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full">
+            {isSignup ? "Sign Up" : "Login"}
+          </Button>
+        </form>
+      </Form>
+
       <p
         className="text-center text-sm cursor-pointer text-gray-600"
         onClick={() => {
           setIsSignup(!isSignup);
-          setError("");
+          form.reset(); // Reset form state when toggling between Login and Signup
         }}
       >
         {isSignup
