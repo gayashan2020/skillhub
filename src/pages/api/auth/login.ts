@@ -1,10 +1,15 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { serialize } from "cookie";
 import { NextApiRequest, NextApiResponse } from "next";
 
 const prisma = new PrismaClient();
-const SECRET_KEY = process.env.JWT_SECRET || "your-secret-key";
+const SECRET = process.env.JWT_SECRET;
+
+if (!SECRET) {
+    throw new Error("JWT_SECRET environment variable is not defined.");
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
@@ -14,27 +19,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { email, password } = req.body;
 
     try {
-        // Find user by email
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
-            return res.status(400).json({ error: "Invalid email or password" });
+            return res.status(400).json({ error: "Invalid credentials" });
         }
 
-        // Compare password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(400).json({ error: "Invalid email or password" });
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(400).json({ error: "Invalid credentials" });
         }
 
-        // Generate JWT token
-        const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, {
+        const token = jwt.sign({ id: user.id, email: user.email }, SECRET as string, {
             expiresIn: "1h",
         });
 
-        return res.status(200).json({ success: true, token, user });
+        res.setHeader(
+            "Set-Cookie",
+            serialize("token", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                path: "/",
+                maxAge: 3600,
+            })
+        );
+
+        return res.status(200).json({ success: true, user });
     } catch (error) {
-        console.error("Login error:", error);
-        return res.status(500).json({ error: "Something went wrong" });
+        console.error(error);
+        return res.status(500).json({ error: "Internal server error" });
     } finally {
         await prisma.$disconnect();
     }
