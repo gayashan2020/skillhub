@@ -1,12 +1,12 @@
-import withAuth from "@/lib/withAuth";
+import AdminLayout from "@/components/layout/AdminLayout";
+import type { NextPageWithLayout } from "../_app";
 
-function Dashboard() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold">Protected Dashboard</h1>
-      <p>Welcome to the protected Dashboard page!</p>
-    </div>
-  );
-}
+const DashboardPage: NextPageWithLayout = () => {
+  return <div>Welcome to the Admin Dashboard</div>;
+};
 
-export default withAuth(Dashboard);
+DashboardPage.getLayout = function getLayout(page) {
+  return <AdminLayout>{page}</AdminLayout>;
+};
+
+export default DashboardPage;
