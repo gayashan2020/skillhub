@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { AppSidebar } from "@/components/common/app-sidebar"
 import {
   Breadcrumb,
@@ -14,12 +14,22 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/router";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export default function AdminLayout({ children }: LayoutProps) {
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login"); // Redirect to login page if not authenticated
+    }
+  }, [status, router]);
   return (
     <SidebarProvider>
       <AppSidebar />

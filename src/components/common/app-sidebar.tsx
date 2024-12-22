@@ -172,7 +172,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => signOut()}
+            onClick={() => signOut({ callbackUrl: "/auth/login" })}
           >
             Sign Out
           </Button>
