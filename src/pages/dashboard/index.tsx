@@ -1,4 +1,4 @@
-import AdminLayout from "@/components/layout/AdminLayout";
+import AdminLayout from "@/components/layout/AdminLayout/AdminLayout";
 import type { NextPageWithLayout } from "../_app";
 
 const DashboardPage: NextPageWithLayout = () => {

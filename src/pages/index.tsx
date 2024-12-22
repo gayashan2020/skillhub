@@ -1,4 +1,4 @@
-import Layout from "@/components/layout/Layout";
+import Layout from "@/components/layout/Layout/Layout";
 import type { NextPageWithLayout } from "./_app";
 
 const LandingPage: NextPageWithLayout = () => {
