@@ -8,18 +8,101 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String         @id @default(uuid())
+  name        String
+  email       String         @unique
+  password    String
+  roles       UserRole[]     // Relation to UserRole
+  resources   Resource[]     // Relation to Resource (owner)
+  auditLogs   AuditLog[]     // Relation to AuditLog
+  attributes  AttributeAssignment[] // Relation to AttributeAssignment
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
-model Base {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Role {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  permissions Permission[]   @relation("RolePermissions") // Relation to Permission
+  userRoles   UserRole[]     // Relation to UserRole
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model UserRole {
+  id        String    @id @default(uuid())
+  userId    String
+  roleId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@unique([userId, roleId]) // Ensure unique role assignments per user
+}
+
+model Permission {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  roles       Role[]         @relation("RolePermissions") // Opposite relation to Role
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Policy {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  conditions  Json           // Stores ABAC conditions as JSON
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Resource {
+  id          String         @id @default(uuid())
+  name        String
+  type        String
+  ownerId     String
+  attributes  Json           // Stores resource-specific attributes
+  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  auditLogs   AuditLog[]     // Relation to AuditLog
+  attributeAssignments AttributeAssignment[] // Relation to AttributeAssignment
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model AuditLog {
+  id          String         @id @default(uuid())
+  userId      String
+  resourceId  String
+  action      String
+  status      String         // e.g., "allowed", "denied"
+  reason      String?        // Optional reason for decision
+  timestamp   DateTime       @default(now())
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource    Resource       @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model Attribute {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  assignments AttributeAssignment[] // Relation to AttributeAssignment
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model AttributeAssignment {
+  id            String     @id @default(uuid())
+  attributeId   String
+  value         String     // The assigned value for the attribute
+  resourceId    String?
+  userId        String?
+  resource      Resource?  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user          User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attribute     Attribute  @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  assignedAt    DateTime   @default(now())
+
+  @@unique([attributeId, resourceId, userId]) // Prevent duplicate assignments for same attribute
 }
