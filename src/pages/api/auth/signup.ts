@@ -1,9 +1,7 @@
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 const signupSchema = z.object({
     name: z.string().min(3, "Name must be at least 3 characters long"),
@@ -44,7 +42,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         console.error(error);
         return res.status(500).json({ error: "Internal server error" });
-    } finally {
-        await prisma.$disconnect();
     }
 }
