@@ -1,10 +1,9 @@
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { serialize } from "cookie";
 import { NextApiRequest, NextApiResponse } from "next";
+import prisma from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 const SECRET = process.env.JWT_SECRET;
 
 if (!SECRET) {
@@ -47,7 +46,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: "Internal server error" });
-    } finally {
-        await prisma.$disconnect();
     }
 }
